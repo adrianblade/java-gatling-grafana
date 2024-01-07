@@ -1,0 +1,62 @@
+version: "2.4"
+services:
+  app:
+    image: java
+    build:
+      context: app
+    networks:
+      - gatling_network
+    ports:
+      - "8080:8080"
+  gatling-runner:
+    scale: 1 # Scale to see the result of multiple nodes
+    build:
+      context: gatling
+    command: [-s, api.MyBasicSimulation, --run-mode, local]
+    networks:
+      - gatling_network
+    depends_on:
+      - grafana
+    environment:
+      - LOCAL_USER_ID=`id -u $USER`
+    volumes:
+      - ./gatling/simulations:/opt/gatling/user-files/simulations
+      - ./gatling/conf:/opt/gatling/conf
+      - ./gatling/results:/opt/gatling/results
+  influxdb:
+    image: influxdb:1.8-alpine
+    container_name: influxdb
+    platform: linux/amd64
+    networks:
+      - gatling_network
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+      - "2003:2003"
+    environment:
+      - INFLUXDB_GRAPHITE_ENABLED=true
+      - INFLUXDB_USERNAME=admin
+      - INFLUXDB_PASSWORD=admin
+      - INFLUXDB_DB=gatlingdb
+    volumes:
+      - influxdb-storage:/var/lib/influxdb
+      - ./influxdb/influxdb.conf:/etc/influxdb/influxdb.conf
+  grafana:
+    image: grafana/grafana:9.3.2
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-worldmap-panel,grafana-piechart-panel,yesoreyeram-infinity-datasource
+      - INFLUX_USER=admin
+      - INFLUX_PASSWORD=admin
+      - INFLUX_DB=gatlingdb
+    volumes:
+      - ./grafana:/etc/grafana/provisioning/
+    networks:
+      - gatling_network
+    ports:
+      - "3000:3000"
+networks:
+  gatling_network:
+volumes:
+  influxdb-storage:
