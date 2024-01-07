@@ -1,4 +1,9 @@
 .vscode
 .DS_Store
-
+#gatling
 gatling/results
+#java app
+app/.gradle
+app/.vscode
+bin
+build
